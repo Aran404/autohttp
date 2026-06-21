@@ -19,6 +19,14 @@ Check `Path.exists()` before `Path.resolve()` or `Path.is_relative_to()` when th
 
 Avoid import-time computation and side effects. Lazily compute expensive or environment-dependent values, using `functools.cache` when appropriate.
 
+Annotate all function signatures (parameters and return types) and module-level variables with type hints. Use `from __future__ import annotations` at the top of every file to enable deferred evaluation.
+
+Do not rely on type inference alone at the module level — annotate explicitly.
+
+Use `Self` return type on class methods returning `self`, and `type[Self]` on `__init_subclass__` / alternative constructors.
+
+Prefer `collections.abc` over `typing` for generic types (e.g., `collections.abc.Sequence` instead of `typing.Sequence`).
+
 Assert before `typing.cast()` unless the code is a measured hot path.
 
 Use `Literal` types for fixed string sets instead of plain `str`.
