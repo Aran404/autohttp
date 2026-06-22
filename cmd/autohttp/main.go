@@ -43,7 +43,7 @@ func main() {
 }
 
 func printUsage() {
-	fmt.Println(`Usage: autohttp <command> [flags]
+	fmt.Fprintln(os.Stderr, `Usage: autohttp <command> [flags]
 
 Commands:
   record <url>   Start a new recording session
