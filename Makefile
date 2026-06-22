@@ -12,6 +12,7 @@ proto: proto-go proto-py
 proto-go:
 	$(PROTOC) --go_out=. --go_opt=module=github.com/autohttp/autohttp \
 		--go-grpc_out=. --go-grpc_opt=module=github.com/autohttp/autohttp \
+		-I proto \
 		proto/autohttp/v1/*.proto
 
 proto-py:
