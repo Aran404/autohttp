@@ -9,6 +9,6 @@ func New() *Detector {
 }
 
 // Detect checks if a response body contains challenge indicators.
-func (d *Detector) Detect(body string) (string, float64) {
-	return "", 0
+func (d *Detector) Detect(body string) (string, float64, error) {
+	return "", 0, nil
 }
