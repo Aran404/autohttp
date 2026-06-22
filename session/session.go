@@ -36,7 +36,7 @@ type Response struct {
 	Status     int
 	StatusText string
 	Headers    map[string]string
-	SetCookies map[string]*pb.CookieMutation
+	SetCookies map[string]string
 	Body       []byte
 }
 
@@ -47,8 +47,8 @@ func FromProto(pb *pb.RecordedSession) *Session {
 	s := &Session{
 		ID:        pb.Id,
 		TargetURL: pb.TargetUrl,
-		StartedAt: time.Unix(0, pb.StartedAt*int64(time.Millisecond)),
-		StoppedAt: time.Unix(0, pb.StoppedAt*int64(time.Millisecond)),
+		StartedAt: time.UnixMilli(pb.StartedAt),
+		StoppedAt: time.UnixMilli(pb.StoppedAt),
 		Warnings:  pb.Warnings,
 	}
 	for _, e := range pb.Exchanges {
@@ -63,8 +63,8 @@ func exchangeFromProto(pe *pb.HttpExchange) *Exchange {
 	}
 	e := &Exchange{
 		ID:          pe.Id,
-		StartedAt:   time.Unix(0, pe.StartedAt*int64(time.Millisecond)),
-		CompletedAt: time.Unix(0, pe.CompletedAt*int64(time.Millisecond)),
+		StartedAt:   time.UnixMilli(pe.StartedAt),
+		CompletedAt: time.UnixMilli(pe.CompletedAt),
 		Initiator:   pe.Initiator,
 	}
 	if pe.Request != nil {
@@ -87,14 +87,14 @@ func exchangeFromProto(pe *pb.HttpExchange) *Exchange {
 			Status:     int(pe.Response.Status),
 			StatusText: pe.Response.StatusText,
 			Headers:    make(map[string]string),
-			SetCookies: make(map[string]*pb.CookieMutation),
+			SetCookies: make(map[string]string),
 			Body:       pe.Response.Body,
 		}
 		for _, h := range pe.Response.Headers {
 			e.Response.Headers[h.Key] = h.Value
 		}
 		for _, c := range pe.Response.SetCookies {
-			e.Response.SetCookies[c.Name] = c
+			e.Response.SetCookies[c.Name] = c.Value
 		}
 	}
 	return e
