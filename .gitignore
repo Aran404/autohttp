@@ -225,6 +225,7 @@ __marimo__/
 
 # Go build
 bin/
+/autohttp
 *.exe
 
 # Protobuf generated code (regenerated via Makefile)
