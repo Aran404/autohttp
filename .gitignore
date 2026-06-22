@@ -232,3 +232,6 @@ python/autohttp_ai/gen/
 
 # Session artifacts
 .autohttp/
+
+# Implementation plans (generated per-session, not commit-worthy)
+.agents/plans/
