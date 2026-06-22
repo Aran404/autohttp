@@ -47,7 +47,7 @@ The recorder outputs a canonical `RecordedSession`.
 
 ### Canonical Session Model
 
-`pkg/session` defines the shared data model through Protocol Buffers.
+`session` defines the shared data model through Protocol Buffers.
 
 Core entities:
 
@@ -295,10 +295,10 @@ autohttp/
     generate/
     verify/
 
-  pkg/
-    session/
-    runtime/
-    gen/
+  session/
+  gen/
+    autohttp/
+      v1/
 
   proto/
     autohttp/
@@ -335,7 +335,7 @@ autohttp/
 ### Layout Principles
 
 - `internal/` holds Go implementation not meant as public API.
-- `pkg/session` holds stable public session/graph types for library consumers.
+- `session/` holds stable public session/graph types for library consumers.
 - `proto/` is the source of truth for Go/Python contracts.
 - `python/autohttp_ai` is optional and isolated.
 - `runtime/` contains minimal code copied or embedded into generated scripts.

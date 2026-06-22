@@ -20,14 +20,15 @@ Key packages:
 - `cmd/autohttp` — CLI entrypoint
 - `internal/camofox` — CamoFox process manager
 - `internal/record` — Recording abstraction
+- `internal/normalize` — Session normalization
 - `internal/tree` — Typed tree parser
 - `internal/index` — Value index
 - `internal/analyze` — Dependency analyzer
 - `internal/graph` — Executable graph
 - `internal/generate` — Code generator
 - `internal/inspect` — CLI inspection
-- `pkg/session` — Public session types
-- `pkg/runtime/go` — Go runtime for generated scripts
+- `session` — Public session types
+- `runtime/go` — Go runtime for generated scripts
 - `proto/autohttp/v1/` — Protobuf contracts
 
 ## Dev Environment
@@ -71,7 +72,7 @@ go test ./internal/analyze/... -v
 - Go: standard `gofmt`, `golangci-lint` if available
 - Protobuf: contract-first, Go and Python share `.proto` files
 - Tests: table-driven, prefer golden fixtures in `testdata/fixtures/`
-- Generated scripts: no external deps beyond stdlib + `pkg/runtime/go`
+- Generated scripts: no external deps beyond stdlib + `runtime/go`
 - Internal packages: not imported by generated scripts
 - Deterministic algorithms only in core path; AI is advisory
 
@@ -81,7 +82,8 @@ go test ./internal/analyze/... -v
 autohttp/
   cmd/autohttp/           # CLI
   internal/               # Private implementation
-  pkg/                    # Public API (session, runtime)
+  session/                # Public session types
+  gen/autohttp/v1/        # Generated protobuf Go bindings
   proto/autohttp/v1/      # Protobuf contracts
   python/autohttp_ai/     # Optional Python AI worker
   runtime/go/             # Go runtime for generated scripts
@@ -111,7 +113,7 @@ autohttp/
 ### Adding a new internal package
 1. Create `internal/<name>/<name>.go` with types/functions
 2. Add tests in `internal/<name>/<name>_test.go`
-3. Export minimal API from `pkg/` if needed externally
+3. Export minimal API from `session/` if needed externally
 
 ### Modifying the session model
 1. Update `.proto` files in `proto/autohttp/v1/`

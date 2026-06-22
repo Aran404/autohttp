@@ -18,7 +18,7 @@ Recommended contract layout:
 
 Generated bindings:
 
-- Go: `pkg/gen/autohttp/v1`
+- Go: `gen/autohttp/v1`
 - Python: `python/autohttp_ai/gen/autohttp/v1`
 
 ### Recorded Session

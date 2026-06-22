@@ -17,6 +17,6 @@
 
 ## Conventions
 
-- Specs live in `.agents/specs/` — see [AGENTS.md issue #71](https://github.com/agentsmd/agents.md/issues/71)
-- Go follows standard project layout (`cmd/`, `internal/`, `pkg/`)
+- Specs live in `.agents/specs/`
+- Go follows standard project layout (`cmd/`, `internal/`, domain-specific public packages)
 - Python follows `python/<package>/` layout with `pyproject.toml`
