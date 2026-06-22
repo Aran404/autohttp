@@ -19,19 +19,21 @@ func TestExtractJSON(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		got, err := ExtractJSON(body, tt.path)
-		if tt.wantFail {
-			if err == nil {
-				t.Errorf("ExtractJSON(%q) = %q, nil; want error", tt.path, got)
+		t.Run(tt.path, func(t *testing.T) {
+			got, err := ExtractJSON(body, tt.path)
+			if tt.wantFail {
+				if err == nil {
+					t.Errorf("ExtractJSON(%q) = %q, nil; want error", tt.path, got)
+				}
+				return
 			}
-			continue
-		}
-		if err != nil {
-			t.Errorf("ExtractJSON(%q): %v", tt.path, err)
-			continue
-		}
-		if got != tt.want {
-			t.Errorf("ExtractJSON(%q) = %q, want %q", tt.path, got, tt.want)
-		}
+			if err != nil {
+				t.Errorf("ExtractJSON(%q): %v", tt.path, err)
+				return
+			}
+			if got != tt.want {
+				t.Errorf("ExtractJSON(%q) = %q, want %q", tt.path, got, tt.want)
+			}
+		})
 	}
 }

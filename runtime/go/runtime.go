@@ -23,7 +23,6 @@ type Config struct {
 // Client is a reusable HTTP client with cookie jar and state management.
 type Client struct {
 	httpClient *http.Client
-	jar        *cookiejar.Jar
 }
 
 // New creates a new runtime Client.
@@ -42,22 +41,20 @@ func New(cfg Config) (*Client, error) {
 		}
 		transport.Proxy = http.ProxyURL(proxyURL)
 	}
-	timeout := cfg.Timeout
-	if timeout == 0 {
-		timeout = 30 * time.Second
+	if cfg.Timeout == 0 {
+		cfg.Timeout = 30 * time.Second
 	}
 	return &Client{
 		httpClient: &http.Client{
 			Transport: transport,
-			Timeout:   timeout,
+			Timeout:   cfg.Timeout,
 			Jar:       jar,
 		},
-		jar: jar,
 	}, nil
 }
 
 // Do sends an HTTP request and returns the response status, headers, and body.
-func (c *Client) Do(ctx context.Context, method, rawURL string, headers map[string]string, body io.Reader) (int, map[string]string, []byte, error) {
+func (c *Client) Do(ctx context.Context, method, rawURL string, headers map[string]string, body io.Reader) (int, http.Header, []byte, error) {
 	req, err := http.NewRequestWithContext(ctx, method, rawURL, body)
 	if err != nil {
 		return 0, nil, nil, fmt.Errorf("new request: %w", err)
@@ -74,24 +71,20 @@ func (c *Client) Do(ctx context.Context, method, rawURL string, headers map[stri
 	if err != nil {
 		return 0, nil, nil, fmt.Errorf("read body: %w", err)
 	}
-	outHeaders := make(map[string]string)
-	for k := range resp.Header {
-		outHeaders[k] = resp.Header.Get(k)
-	}
-	return resp.StatusCode, outHeaders, respBody, nil
+	return resp.StatusCode, resp.Header, respBody, nil
 }
 
 // ExtractJSON parses a JSON response and extracts a value at the given path.
 // Path uses dot notation: "data.token" or "user.id".
 func ExtractJSON(body []byte, path string) (string, error) {
-	var data interface{}
+	var data any
 	if err := json.Unmarshal(body, &data); err != nil {
 		return "", fmt.Errorf("json parse: %w", err)
 	}
 	parts := strings.Split(path, ".")
 	current := data
 	for _, part := range parts {
-		m, ok := current.(map[string]interface{})
+		m, ok := current.(map[string]any)
 		if !ok {
 			return "", fmt.Errorf("path %q: not an object at %q", path, part)
 		}
