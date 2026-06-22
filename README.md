@@ -1,4 +1,4 @@
-# autohttp
+# AutoHTTP
 
 Record browser workflows, reconstruct HTTP dependency graphs, and generate standalone replay scripts in Go or Python with fresh dynamic state.
 
