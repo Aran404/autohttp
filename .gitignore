@@ -222,3 +222,13 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Go build
+bin/
+*.exe
+
+# Protobuf generated code (regenerated via Makefile)
+python/autohttp_ai/gen/
+
+# Session artifacts
+.autohttp/
