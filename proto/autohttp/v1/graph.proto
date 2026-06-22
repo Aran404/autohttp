@@ -1,0 +1,32 @@
+syntax = "proto3";
+package autohttp.v1;
+option go_package = "github.com/autohttp/autohttp/session/gen/autohttp/v1";
+
+import "autohttp/v1/analysis.proto";
+
+message GraphNode {
+  string id = 1;
+  string type = 2; // http_request | response_extract | cookie_update | storage_update | js_evaluate | captcha_solve | browser_fallback | logical_operation
+  string exchange_id = 3;
+  string label = 4;
+  map<string, string> config = 5;
+}
+
+message GraphEdge {
+  string source_id = 1;
+  string target_id = 2;
+  string data_type = 3; // cookie | header | body_field | query_param | storage | captcha | user_input
+  string tree_path = 4;
+}
+
+message ExecutionGraph {
+  repeated GraphNode nodes = 1;
+  repeated GraphEdge edges = 2;
+  repeated string runtime_requirements = 3; // pure_http | browser | captcha | javascript
+  repeated string unresolved_regions = 4;
+}
+
+message GraphOutput {
+  ExecutionGraph graph = 1;
+  AnalysisResult analysis = 2;
+}

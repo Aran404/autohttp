@@ -1,0 +1,73 @@
+syntax = "proto3";
+package autohttp.v1;
+option go_package = "github.com/autohttp/autohttp/session/gen/autohttp/v1";
+
+message EvidencePath {
+  string source_tree_path = 1;
+  string source_exchange_id = 2;
+  string transform = 3; // exact | url_decoded | base64_decoded | html_decoded | jwt_claim
+  double confidence = 4;
+}
+
+message DynamicCandidate {
+  string tree_path = 1;
+  string exchange_id = 2;
+  string classification = 3; // static | dynamic | unknown
+  double entropy = 4;
+  string shape = 5;
+  repeated EvidencePath evidence = 6;
+  double confidence = 7;
+  string reason = 8;
+  string source = 9; // deterministic | ai | user_override | runtime_observed
+  string status = 10; // accepted | rejected | unresolved
+}
+
+message DependencyCandidate {
+  string id = 1;
+  string downstream_tree_path = 2;
+  string downstream_exchange_id = 3;
+  string upstream_tree_path = 4;
+  string upstream_exchange_id = 5;
+  string transform = 6;
+  repeated EvidencePath evidence = 7;
+  double confidence = 8;
+  string reason = 9;
+  string source = 10;
+  string status = 11;
+}
+
+message NoiseCandidate {
+  string exchange_id = 1;
+  string reason = 2;
+  double confidence = 3;
+  string category = 4; // static_asset | analytics | ad | telemetry | preload | polling | duplicate
+  string source = 5;
+  string status = 6;
+}
+
+message LogicalOperationCandidate {
+  string id = 1;
+  string name = 2;
+  repeated string exchange_ids = 3;
+  repeated string dependency_candidate_ids = 4;
+  double confidence = 5;
+  string source = 6;
+  string status = 7;
+}
+
+message ChallengeCandidate {
+  string exchange_id = 1;
+  string challenge_type = 2; // captcha | cloudflare | bot_detection | login_form | unknown
+  double confidence = 3;
+  string source = 4;
+  string status = 5;
+}
+
+message AnalysisResult {
+  repeated DependencyCandidate dependencies = 1;
+  repeated DynamicCandidate dynamic_fields = 2;
+  repeated NoiseCandidate noise = 3;
+  repeated LogicalOperationCandidate operations = 4;
+  repeated ChallengeCandidate challenges = 5;
+  repeated string unresolved_regions = 6;
+}
