@@ -3,7 +3,7 @@ package session
 import (
 	"time"
 
-	pb "github.com/autohttp/autohttp/session/gen/autohttp/v1"
+	pb "github.com/autohttp/autohttp/gen/autohttp/v1"
 )
 
 type Session struct {

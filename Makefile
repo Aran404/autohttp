@@ -1,6 +1,7 @@
 .PHONY: all build proto test clean
 
 GO := go
+PATH := $(shell $(GO) env GOPATH)/bin:$(PATH)
 PROTOC := protoc
 PROTOC_GEN_GO := protoc-gen-go
 PROTOC_GEN_GO_GRPC := protoc-gen-go-grpc

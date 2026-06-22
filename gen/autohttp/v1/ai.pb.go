@@ -211,7 +211,7 @@ const file_autohttp_v1_ai_proto_rawDesc = "" +
 	"\revidence_path\x18\x04 \x01(\tR\fevidencePath\x126\n" +
 	"\x17recommend_user_approval\x18\x05 \x01(\bR\x15recommendUserApproval2^\n" +
 	"\tAIService\x12Q\n" +
-	"\x10ResolveAmbiguity\x12\x1c.autohttp.v1.AmbiguityPacket\x1a\x1f.autohttp.v1.AdvisoryAnnotationB6Z4github.com/autohttp/autohttp/session/gen/autohttp/v1b\x06proto3"
+	"\x10ResolveAmbiguity\x12\x1c.autohttp.v1.AmbiguityPacket\x1a\x1f.autohttp.v1.AdvisoryAnnotationB.Z,github.com/autohttp/autohttp/gen/autohttp/v1b\x06proto3"
 
 var (
 	file_autohttp_v1_ai_proto_rawDescOnce sync.Once

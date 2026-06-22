@@ -746,7 +746,7 @@ const file_autohttp_v1_analysis_proto_rawDesc = "" +
 	"\n" +
 	"challenges\x18\x05 \x03(\v2\x1f.autohttp.v1.ChallengeCandidateR\n" +
 	"challenges\x12-\n" +
-	"\x12unresolved_regions\x18\x06 \x03(\tR\x11unresolvedRegionsB6Z4github.com/autohttp/autohttp/session/gen/autohttp/v1b\x06proto3"
+	"\x12unresolved_regions\x18\x06 \x03(\tR\x11unresolvedRegionsB.Z,github.com/autohttp/autohttp/gen/autohttp/v1b\x06proto3"
 
 var (
 	file_autohttp_v1_analysis_proto_rawDescOnce sync.Once

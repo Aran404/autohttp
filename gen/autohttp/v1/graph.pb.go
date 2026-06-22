@@ -312,7 +312,7 @@ const file_autohttp_v1_graph_proto_rawDesc = "" +
 	"\x12unresolved_regions\x18\x04 \x03(\tR\x11unresolvedRegions\"y\n" +
 	"\vGraphOutput\x121\n" +
 	"\x05graph\x18\x01 \x01(\v2\x1b.autohttp.v1.ExecutionGraphR\x05graph\x127\n" +
-	"\banalysis\x18\x02 \x01(\v2\x1b.autohttp.v1.AnalysisResultR\banalysisB6Z4github.com/autohttp/autohttp/session/gen/autohttp/v1b\x06proto3"
+	"\banalysis\x18\x02 \x01(\v2\x1b.autohttp.v1.AnalysisResultR\banalysisB.Z,github.com/autohttp/autohttp/gen/autohttp/v1b\x06proto3"
 
 var (
 	file_autohttp_v1_graph_proto_rawDescOnce sync.Once

@@ -1,6 +1,6 @@
 syntax = "proto3";
 package autohttp.v1;
-option go_package = "github.com/autohttp/autohttp/session/gen/autohttp/v1";
+option go_package = "github.com/autohttp/autohttp/gen/autohttp/v1";
 
 message Header {
   string key = 1;

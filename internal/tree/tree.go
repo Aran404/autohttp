@@ -1,7 +1,7 @@
 package tree
 
 import (
-	pb "github.com/autohttp/autohttp/session/gen/autohttp/v1"
+	pb "github.com/autohttp/autohttp/gen/autohttp/v1"
 )
 
 // Parser converts request/response artifacts into typed trees.

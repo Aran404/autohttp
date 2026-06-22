@@ -1,7 +1,7 @@
 package record
 
 import (
-	pb "github.com/autohttp/autohttp/session/gen/autohttp/v1"
+	pb "github.com/autohttp/autohttp/gen/autohttp/v1"
 )
 
 // Recorder captures browser network activity into a RecordedSession.

@@ -254,7 +254,7 @@ const file_autohttp_v1_tree_proto_rawDesc = "" +
 	"\x11request_body_tree\x18\x05 \x01(\v2\x15.autohttp.v1.TreeNodeR\x0frequestBodyTree\x12C\n" +
 	"\x12response_body_tree\x18\x06 \x01(\v2\x15.autohttp.v1.TreeNodeR\x10responseBodyTree\x122\n" +
 	"\tform_tree\x18\a \x01(\v2\x15.autohttp.v1.TreeNodeR\bformTree\x122\n" +
-	"\thtml_tree\x18\b \x01(\v2\x15.autohttp.v1.TreeNodeR\bhtmlTreeB6Z4github.com/autohttp/autohttp/session/gen/autohttp/v1b\x06proto3"
+	"\thtml_tree\x18\b \x01(\v2\x15.autohttp.v1.TreeNodeR\bhtmlTreeB.Z,github.com/autohttp/autohttp/gen/autohttp/v1b\x06proto3"
 
 var (
 	file_autohttp_v1_tree_proto_rawDescOnce sync.Once

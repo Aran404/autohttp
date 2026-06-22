@@ -1,7 +1,7 @@
 package index
 
 import (
-	pb "github.com/autohttp/autohttp/session/gen/autohttp/v1"
+	pb "github.com/autohttp/autohttp/gen/autohttp/v1"
 )
 
 // Index builds an inverted index of every scalar value across trees.

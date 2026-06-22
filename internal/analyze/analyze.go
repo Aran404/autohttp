@@ -1,7 +1,7 @@
 package analyze
 
 import (
-	pb "github.com/autohttp/autohttp/session/gen/autohttp/v1"
+	pb "github.com/autohttp/autohttp/gen/autohttp/v1"
 )
 
 // Result holds analysis output.

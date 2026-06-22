@@ -834,7 +834,7 @@ const file_autohttp_v1_session_proto_rawDesc = "" +
 	"\x10cookie_mutations\x18\b \x03(\v2\x1b.autohttp.v1.CookieMutationR\x0fcookieMutations\x12:\n" +
 	"\fuser_actions\x18\t \x03(\v2\x17.autohttp.v1.UserActionR\vuserActions\x12\x1a\n" +
 	"\bwarnings\x18\n" +
-	" \x03(\tR\bwarningsB6Z4github.com/autohttp/autohttp/session/gen/autohttp/v1b\x06proto3"
+	" \x03(\tR\bwarningsB.Z,github.com/autohttp/autohttp/gen/autohttp/v1b\x06proto3"
 
 var (
 	file_autohttp_v1_session_proto_rawDescOnce sync.Once
