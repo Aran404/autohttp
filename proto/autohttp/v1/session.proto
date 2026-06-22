@@ -30,7 +30,7 @@ message Request {
   string url = 2;
   repeated Header headers = 3;
   repeated CookieMutation cookies = 4;
-  string body = 5;
+  bytes body = 5;
   string body_type = 6; // json | form | multipart | text | binary
 }
 
@@ -39,7 +39,7 @@ message Response {
   string status_text = 2;
   repeated Header headers = 3;
   repeated CookieMutation set_cookies = 4;
-  string body = 5;
+  bytes body = 5;
   string body_type = 6;
 }
 
