@@ -13,6 +13,6 @@ func New() *Normalizer {
 }
 
 // Normalize converts raw data into a canonical session.
-func (n *Normalizer) Normalize(raw interface{}) (*pb.RecordedSession, error) {
+func (n *Normalizer) Normalize(raw any) (*pb.RecordedSession, error) {
 	return nil, nil
 }

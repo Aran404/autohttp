@@ -59,7 +59,7 @@ func parseFixture(data []byte) (*session.Session, error) {
 }
 
 func parseRequest(raw []byte) *pb.Request {
-	var reqMap map[string]interface{}
+	var reqMap map[string]any
 	if err := json.Unmarshal(raw, &reqMap); err != nil {
 		return nil
 	}
@@ -78,9 +78,9 @@ func parseRequest(raw []byte) *pb.Request {
 		req.Body = []byte(v)
 	}
 
-	if headers, ok := reqMap["headers"].([]interface{}); ok {
+	if headers, ok := reqMap["headers"].([]any); ok {
 		for _, h := range headers {
-			if m, ok := h.(map[string]interface{}); ok {
+			if m, ok := h.(map[string]any); ok {
 				key, _ := m["key"].(string)
 				val, _ := m["value"].(string)
 				req.Headers = append(req.Headers, &pb.Header{Key: key, Value: val})
@@ -88,9 +88,9 @@ func parseRequest(raw []byte) *pb.Request {
 		}
 	}
 
-	if cookies, ok := reqMap["cookies"].([]interface{}); ok {
+	if cookies, ok := reqMap["cookies"].([]any); ok {
 		for _, c := range cookies {
-			if m, ok := c.(map[string]interface{}); ok {
+			if m, ok := c.(map[string]any); ok {
 				name, _ := m["name"].(string)
 				val, _ := m["value"].(string)
 				domain, _ := m["domain"].(string)
@@ -120,7 +120,7 @@ func parseRequest(raw []byte) *pb.Request {
 }
 
 func parseResponse(raw []byte) *pb.Response {
-	var respMap map[string]interface{}
+	var respMap map[string]any
 	if err := json.Unmarshal(raw, &respMap); err != nil {
 		return nil
 	}
@@ -139,9 +139,9 @@ func parseResponse(raw []byte) *pb.Response {
 		resp.Body = []byte(v)
 	}
 
-	if headers, ok := respMap["headers"].([]interface{}); ok {
+	if headers, ok := respMap["headers"].([]any); ok {
 		for _, h := range headers {
-			if m, ok := h.(map[string]interface{}); ok {
+			if m, ok := h.(map[string]any); ok {
 				key, _ := m["key"].(string)
 				val, _ := m["value"].(string)
 				resp.Headers = append(resp.Headers, &pb.Header{Key: key, Value: val})
@@ -149,9 +149,9 @@ func parseResponse(raw []byte) *pb.Response {
 		}
 	}
 
-	if cookies, ok := respMap["set_cookies"].([]interface{}); ok {
+	if cookies, ok := respMap["set_cookies"].([]any); ok {
 		for _, c := range cookies {
-			if m, ok := c.(map[string]interface{}); ok {
+			if m, ok := c.(map[string]any); ok {
 				name, _ := m["name"].(string)
 				val, _ := m["value"].(string)
 				domain, _ := m["domain"].(string)
