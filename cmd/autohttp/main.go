@@ -201,11 +201,12 @@ func exchangeToPB(e *session.Exchange) *pb.HttpExchange {
 	}
 	if e.Request != nil {
 		pbe.Request = &pb.Request{
-			Method:  e.Request.Method,
-			Url:     e.Request.URL,
-			Body:    e.Request.Body,
-			Headers: make([]*pb.Header, 0, len(e.Request.Headers)),
-			Cookies: make([]*pb.CookieMutation, 0, len(e.Request.Cookies)),
+			Method:   e.Request.Method,
+			Url:      e.Request.URL,
+			Body:     e.Request.Body,
+			BodyType: e.Request.BodyType,
+			Headers:  make([]*pb.Header, 0, len(e.Request.Headers)),
+			Cookies:  make([]*pb.CookieMutation, 0, len(e.Request.Cookies)),
 		}
 		for k, v := range e.Request.Headers {
 			pbe.Request.Headers = append(pbe.Request.Headers, &pb.Header{Key: k, Value: v})
@@ -219,6 +220,7 @@ func exchangeToPB(e *session.Exchange) *pb.HttpExchange {
 			Status:     int32(e.Response.Status),
 			StatusText: e.Response.StatusText,
 			Body:       e.Response.Body,
+			BodyType:   e.Response.BodyType,
 			Headers:    make([]*pb.Header, 0, len(e.Response.Headers)),
 			SetCookies: make([]*pb.CookieMutation, 0, len(e.Response.SetCookies)),
 		}

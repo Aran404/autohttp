@@ -25,11 +25,12 @@ type Exchange struct {
 }
 
 type Request struct {
-	Method  string
-	URL     string
-	Headers map[string]string
-	Cookies map[string]string
-	Body    []byte
+	Method   string
+	URL      string
+	Headers  map[string]string
+	Cookies  map[string]string
+	Body     []byte
+	BodyType string
 }
 
 type Response struct {
@@ -38,6 +39,7 @@ type Response struct {
 	Headers    map[string]string
 	SetCookies map[string]string
 	Body       []byte
+	BodyType   string
 }
 
 func FromProto(pb *pb.RecordedSession) *Session {
@@ -69,11 +71,12 @@ func exchangeFromProto(pe *pb.HttpExchange) *Exchange {
 	}
 	if pe.Request != nil {
 		e.Request = &Request{
-			Method:  pe.Request.Method,
-			URL:     pe.Request.Url,
-			Headers: make(map[string]string),
-			Cookies: make(map[string]string),
-			Body:    pe.Request.Body,
+			Method:   pe.Request.Method,
+			URL:      pe.Request.Url,
+			Headers:  make(map[string]string),
+			Cookies:  make(map[string]string),
+			Body:     pe.Request.Body,
+			BodyType: pe.Request.BodyType,
 		}
 		for _, h := range pe.Request.Headers {
 			e.Request.Headers[h.Key] = h.Value
@@ -89,6 +92,7 @@ func exchangeFromProto(pe *pb.HttpExchange) *Exchange {
 			Headers:    make(map[string]string),
 			SetCookies: make(map[string]string),
 			Body:       pe.Response.Body,
+			BodyType:   pe.Response.BodyType,
 		}
 		for _, h := range pe.Response.Headers {
 			e.Response.Headers[h.Key] = h.Value
