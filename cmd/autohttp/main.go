@@ -63,14 +63,6 @@ Commands:
   help           Print this help`)
 }
 
-func cmdRecord() {
-	fs := flag.NewFlagSet("record", flag.ExitOnError)
-	noAI := fs.Bool("no-ai", false, "Disable AI escalation")
-	fs.Parse(os.Args[2:])
-	_ = noAI
-	fmt.Println("record: not yet implemented")
-}
-
 func cmdStop() {
 	fmt.Println("stop: not yet implemented")
 }
