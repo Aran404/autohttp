@@ -241,6 +241,7 @@ python/autohttp_ai/gen/
 *.zip
 *.network
 *.trace
+output.json
 inspect.go 
 main.go 
 parse.py
