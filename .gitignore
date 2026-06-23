@@ -236,3 +236,12 @@ python/autohttp_ai/gen/
 
 # Implementation plans (generated per-session, not commit-worthy)
 .agents/plans/
+
+*.har
+*.zip
+*.network
+*.trace
+inspect.go 
+main.go 
+parse.py
+node_modules

@@ -1,0 +1,8 @@
+{
+  "dependencies": {
+    "@askjo/camofox-browser": "1.11.2"
+  },
+  "overrides": {
+    "playwright-core": "~1.59.0"
+  }
+}
