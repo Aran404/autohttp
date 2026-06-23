@@ -1,0 +1,159 @@
+syntax = "proto3";
+package autohttp.v1;
+option go_package = "github.com/autohttp/autohttp/gen/autohttp/v1";
+
+import "autohttp/v1/session.proto";
+
+enum Browser {
+  BROWSER_UNSPECIFIED = 0;
+  BROWSER_CAMOUFOX = 1;
+  BROWSER_CLOAK = 2;
+}
+
+message NetworkIdleSettle {
+  int64 quiet_window_ms = 1;
+}
+
+message ResponseOnlySettle {
+}
+
+message UrlSettle {
+  string url = 1;
+}
+
+message TimeoutSettle {
+  int64 duration_ms = 1;
+}
+
+message CompletionPolicy {
+  oneof policy {
+    NetworkIdleSettle network_idle = 1;
+    ResponseOnlySettle response_only = 2;
+    UrlSettle url_settle = 3;
+    TimeoutSettle timeout = 4;
+  }
+}
+
+message EndpointGoal {
+  string id = 1;
+  string url_pattern = 2;
+  string method = 3;
+  string status_hint = 4;
+  string body_hint = 5;
+  bool terminal = 6;
+  CompletionPolicy completion = 7;
+}
+
+message StartRecording {
+  Browser browser = 1;
+  string target_url = 2;
+  repeated EndpointGoal endpoints = 3;
+  string proxy_url = 4;
+  bool geoip = 5;
+  map<string, string> settings = 6;
+}
+
+message UpdateSettings {
+  map<string, string> settings = 1;
+}
+
+message CancelRecording {
+  string reason = 1;
+}
+
+message BrowserCommand {
+  oneof command {
+    StartRecording start_recording = 1;
+    UpdateSettings update_settings = 2;
+    CancelRecording cancel_recording = 3;
+  }
+}
+
+message BrowserLaunched {
+  Browser browser = 1;
+  string user_agent = 2;
+}
+
+message BrowserCrashed {
+  string reason = 1;
+  string stack = 2;
+}
+
+message RequestStarted {
+  string request_id = 1;
+  string method = 2;
+  string url = 3;
+  repeated Header headers = 4;
+  repeated CookieMutation cookies = 5;
+  bytes body = 6;
+  string body_type = 7;
+}
+
+message ResponseHeaders {
+  string request_id = 1;
+  int32 status = 2;
+  string status_text = 3;
+  repeated Header headers = 4;
+  repeated CookieMutation set_cookies = 5;
+}
+
+message ResponseBody {
+  string request_id = 1;
+  bytes body = 2;
+  string content_type = 3;
+  int64 length = 4;
+}
+
+message RedirectObserved {
+  string request_id = 1;
+  string parent_request_id = 2;
+  int32 status = 3;
+  string location = 4;
+}
+
+message EndpointRequestStarted {
+  string request_id = 1;
+  string endpoint_id = 2;
+}
+
+message EndpointResponseCompleted {
+  string request_id = 1;
+  string endpoint_id = 2;
+  int32 status = 3;
+}
+
+message EndpointSettled {
+  string endpoint_id = 1;
+  string settle_reason = 2;
+}
+
+message Error {
+  string message = 1;
+  bool fatal = 2;
+}
+
+message SessionFinalized {
+  string session_id = 1;
+  int64 recorded_exchanges = 2;
+}
+
+message BrowserEvent {
+  oneof event {
+    BrowserLaunched browser_launched = 1;
+    BrowserCrashed browser_crashed = 2;
+    RequestStarted request_started = 3;
+    ResponseHeaders response_headers = 4;
+    ResponseBody response_body = 5;
+    RedirectObserved redirect_observed = 6;
+    StorageSnapshot storage_snapshot = 7;
+    EndpointRequestStarted endpoint_request_started = 8;
+    EndpointResponseCompleted endpoint_response_completed = 9;
+    EndpointSettled endpoint_settled = 10;
+    Error error = 11;
+    SessionFinalized session_finalized = 12;
+  }
+}
+
+service BrowserWorker {
+  rpc Record(stream BrowserCommand) returns (stream BrowserEvent);
+}
