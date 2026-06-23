@@ -1,15 +1,11 @@
 {
-    "include": ["python"],
-    "exclude": [
-        "**/gen/**",
-        "**/__pycache__/**",
-        "**/.pytest_cache/**"
-    ],
-    "extraPaths": [
-        "python",
-        "python/autohttp_worker/gen",
-        "python/autohttp_ai/gen"
-    ],
-    "pythonVersion": "3.11",
-    "typeCheckingMode": "basic"
+  "include": ["python"],
+  "exclude": ["**/gen/**", "**/__pycache__/**", "**/.pytest_cache/**"],
+  "extraPaths": [
+    "python",
+    "python/autohttp_worker/gen",
+    "python/autohttp_ai/gen",
+  ],
+  "pythonVersion": "3.11",
+  "typeCheckingMode": "basic",
 }
