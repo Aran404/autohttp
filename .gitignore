@@ -230,6 +230,7 @@ bin/
 
 # Protobuf generated code (regenerated via Makefile)
 python/autohttp_ai/gen/
+python/autohttp_worker/gen/
 
 # Session artifacts
 .autohttp/
