@@ -1,96 +1,116 @@
-# autohttp — Testing & Verification Strategy
+# autohttp Testing & Verification
 
-Date: 2026-06-21
+Date: 2026-06-23
 
-## Testing And Verification Strategy
+## Test Layers
 
-### Core Verification Goals
+### Unit Tests
 
-Testing should prove that `autohttp` works without relying on AI.
+Standard unit tests for Go packages and Python modules. Go uses `go test ./...`. Python uses `pytest`.
 
-Primary guarantees:
+Targets:
 
-- Captured sessions normalize correctly.
-- Trees preserve all important request/response fields.
-- Value indexing finds encoded and transformed values.
-- Deterministic analyzer identifies dependencies.
-- Generated scripts bind dynamic state correctly.
-- AI-disabled mode remains useful and inspectable.
+- `internal/tree` — typed tree parser correctness.
+- `internal/index` — value index normalization and lookup.
+- `internal/analyze` — deterministic dependency discovery, dynamic field classification, noise filtering.
+- `internal/graph` — graph construction and integrity.
+- `internal/generate` — Go and Python code templates.
+- `python/autohttp_worker` — browser adapter translation, endpoint matching, gRPC stream handling.
+- `runtime/go` and `runtime/python` — pure HTTP replay correctness, redirect handling, JSON/HTML extraction.
 
-### Test Flow
+### Browser Adapter Tests
 
-```mermaid
-flowchart TD
-    Fix[Raw Fixture] --> N[Normalize<br>Session]
-    N --> P[Parse Trees]
-    P --> I[Build Value<br>Index]
-    I --> A[Deterministic<br>Analyze]
-    A --> G[Build Graph]
-    G --> Gen[Generate<br>Script]
-    Gen --> C[Compile<br>+ Syntax Check]
-    C --> V[Verify Against<br>Test Target]
+Mocked browser adapter tests. The adapter interface is mocked in Go, and the Python adapter is exercised against a synthetic browser driver that emits known events. This validates the gRPC contract end to end without launching a real browser.
+
+### Golden Fixtures
+
+Session fixtures under `testdata/fixtures/` that exercise specific patterns:
+
+- Login with CSRF hidden input and cookie session
+- OAuth-style redirect chain with `Set-Cookie` at each hop
+- Form submission with JSON body, dependency on prior JSON response
+- Multi-endpoint ordered flow with incremental analysis
+- Session with unresolved dynamic value requiring user-override binding
+
+Each fixture has:
+
+- A JSON session input
+- A JSON expected `RecordedSession` output
+- A JSON expected graph output
+- A JSON expected unresolved binding list
+
+### Live Recording Tests
+
+Slow, gated, network-dependent. They:
+
+- Launch the Python browser worker
+- Drive a small workflow against a local test target
+- Verify the resulting session artifact
+- Verify the generated replay script runs against the same local target
+
+These tests are tagged `live` and skipped by default. They run in CI on a schedule or on demand.
+
+### Generated Script Tests
+
+For each supported target (Go, Python), the generated script is run against a local test target and the final state is compared to the recording-time success condition. The test target is a small HTTP server that simulates the recorded workflow.
+
+## Verification Commands
+
+```bash
+# Unit tests
+go test ./...
+go test -race ./...
+pytest python/autohttp_worker/tests
+pytest python/autohttp_ai/tests
+
+# Live recording against a test target
+go run ./cmd/autohttp record http://localhost:9999 \
+  --browser camoufox \
+  --endpoints "/login" \
+  --session test-login
+
+# Analysis
+go run ./cmd/autohttp analyze --session test-login
+
+# Generation
+go run ./cmd/autohttp generate --session test-login --target go --output test-login.go
+
+# Verification
+go run ./cmd/autohttp verify --script test-login.go --target go --success-url http://localhost:9999/dashboard
 ```
 
-### Test Layers
+## Test Targets
 
-**Unit tests** focus on deterministic core logic:
+`testdata/targets/` contains small Go programs that simulate real workflows:
 
-- URL/header/cookie/body parsing
-- JSON/form/HTML tree generation
-- Entropy and shape classification
-- Value normalization and indexing
-- Dependency candidate scoring
-- Noise classification
-- Graph construction
+- `login-server` — form login with CSRF hidden input and `Set-Cookie` session.
+- `oauth-server` — multi-step redirect chain with bearer token at the end.
+- `json-server` — JSON request/response with nested dependency.
 
-**Golden fixture tests** use stored recordings as fixtures.
+Each test target can run in CI on a random local port.
 
-Each fixture includes:
+## CI
 
-- Raw recording artifact
-- Expected parsed tree paths
-- Expected dependencies
-- Expected dynamic/static classifications
-- Expected generated graph
+CI runs:
 
-**Generated script tests** should run against stable local test targets:
+- `go fmt ./...`
+- `go vet ./...`
+- `go test ./...`
+- `go test -race ./...`
+- `make proto`
+- `pytest python/autohttp_worker/tests` (adapter unit tests only, not live recording)
+- `pytest python/autohttp_ai/tests`
 
-- Simple CSRF login form
-- Hidden input form flow
-- JSON API token flow
-- Cookie-based session flow
-- Redirect OAuth-like flow
-- Noise-heavy page with analytics/static assets
+Live recording and live verification are not part of standard CI. They run on a schedule against dedicated test targets.
 
-**Integration tests** exercise the full pipeline:
+## Coverage
 
-```text
-record fixture → normalize → parse trees → index → analyze → graph → generate → verify
-```
+Coverage is reported per package. Tests must exist for:
 
-CamoFox live tests should be optional because browser downloads and live websites are slow or flaky.
+- New public Go APIs
+- New Python worker behavior
+- New protobuf fields
+- New runtime helpers
+- New CLI flags
 
-### AI Tests
-
-AI tests should not call real providers by default.
-
-Use:
-
-- Fake AI worker
-- Static ambiguity packet fixtures
-- Cached responses
-- Schema validation tests
-- Rejection tests for hallucinated paths
-
-The project must not require live `g4f` calls in CI.
-
-### Verification Commands
-
-Early project verification should include:
-
-- Go tests
-- Go vet/static checks
-- Python tests
-- Protobuf generation check
-- Fixture golden tests
-- Generated script compile check
+Coverage targets are not enforced as a hard gate. The rule is: if a behavior is testable, it must be tested.

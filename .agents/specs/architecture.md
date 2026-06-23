@@ -1,6 +1,6 @@
-# autohttp — Component Architecture & Layout
+# autohttp Component Architecture
 
-Date: 2026-06-21
+Date: 2026-06-23
 
 ## Component Architecture
 
@@ -10,44 +10,78 @@ Date: 2026-06-21
 
 Commands:
 
-- `autohttp record <url>` starts CamoFox and begins capture.
-- `autohttp stop` finalizes the recording and writes artifacts.
-- `autohttp analyze` builds the deterministic dependency graph.
-- `autohttp generate` emits a standalone Go or Python script.
-- `autohttp inspect` lets users review requests, fields, dependencies, confidence scores, and AI escalation points.
+- `autohttp record <url>` starts the Python browser worker and begins capture.
+- `autohttp analyze` runs deterministic analysis on a persisted session.
+- `autohttp generate --target go|python` emits a standalone replay script.
+- `autohttp verify` runs a generated script against the live target.
+- `autohttp inspect` lets users review requests, fields, dependencies, confidence scores, and unresolved regions.
 
 Go owns orchestration because this project is fundamentally a high-performance HTTP/session compiler, not an AI application.
 
-### CamoFox Process Manager
+### Python Browser Worker
 
-`internal/camofox` manages `@askjo/camofox-browser` as an external Node process.
+`python/autohttp_worker` is a per-recording subprocess started by the Go CLI. One Python worker process exists for the duration of one `autohttp record` invocation, then exits.
 
 Responsibilities:
 
-- Start and stop CamoFox via `npx`, a local Node install, Docker, or a source checkout.
-- Configure CamoFox environment: port, access key, profile directory, trace directory, proxy settings, and VNC.
-- Call CamoFox REST endpoints directly.
-- Create tabs with `trace: true`.
-- Fetch storage state, snapshots, JavaScript evaluation results, screenshots, and traces.
-- Keep CamoFox replaceable as a browser backend.
+- Launch and tear down the selected browser engine (Camoufox or CloakBrowser).
+- Drive the browser through navigation, clicks, typing, and form submissions driven by the user.
+- Capture all browser/network/storage events and stream them to Go through a bidirectional gRPC stream.
+- Perform live endpoint matching on the request/response stream.
+- Emit phase events: `EndpointRequestStarted`, `EndpointResponseCompleted`, `EndpointSettled`.
 
-The actual runtime architecture is Go core, Node/CamoFox recorder, and optional Python AI worker.
+The Python worker is the only component that talks to the browser engine. Go does not import browser SDKs.
 
-### Recorder Layer
+### Browser Adapters
 
-`internal/record` is the abstraction for capture backends.
+Each supported browser has a Python adapter behind a shared interface:
 
-Initial backends:
+```python
+class BrowserAdapter(Protocol):
+    def launch(self, config: LaunchConfig) -> Browser: ...
+    def navigate(self, browser: Browser, url: str) -> None: ...
+    def capture_events(self, browser: Browser) -> AsyncIterator[BrowserEvent]: ...
+    def close(self, browser: Browser) -> None: ...
+```
 
-- CamoFox trace recorder: uses Playwright trace output from CamoFox. Useful for v0, but should not be the only long-term source of truth.
-- CamoFox network-event recorder: preferred long-term backend. A small MIT-compatible extension or patch exposing structured request and response events directly.
-- Optional proxy recorder later: useful for raw HTTP visibility, but not default because MITM interception can alter browser and TLS behavior.
+Initial adapters:
 
-The recorder outputs a canonical `RecordedSession`.
+- **Camoufox adapter** wraps `camoufox.sync_api.Camoufox` for Firefox.
+- **CloakBrowser adapter** wraps `cloakbrowser.launch` for Chromium.
+
+Adapters translate browser-specific events into the shared `BrowserEvent` protobuf. Go consumes only the canonical events.
+
+### Streaming Contract
+
+Go and the Python worker communicate through one bidirectional gRPC stream:
+
+```proto
+service BrowserWorker {
+  rpc Record(stream BrowserCommand) returns (stream BrowserEvent);
+}
+```
+
+`BrowserCommand` carries:
+
+- `StartRecording` (browser choice, URL, endpoint definitions, completion policy)
+- `CancelRecording` (user interrupt)
+- `UpdateSettings` (proxy, fingerprint, etc.)
+
+`BrowserEvent` carries:
+
+- `BrowserLaunched`
+- `RequestStarted`, `ResponseHeaders`, `ResponseBody`
+- `RedirectObserved`
+- `StorageSnapshot`
+- `EndpointRequestStarted`, `EndpointResponseCompleted`, `EndpointSettled`
+- `Error`
+- `SessionFinalized`
+
+The streaming contract lives in `proto/autohttp/v1/browser.proto` to keep browser capture concerns separate from session/analysis/graph contracts.
 
 ### Canonical Session Model
 
-`session` defines the shared data model through Protocol Buffers.
+`session` defines the shared data model through Protocol Buffers. The model is produced by Go's normalizer after consuming browser events.
 
 Core entities:
 
@@ -58,8 +92,7 @@ Core entities:
 - `Header`
 - `CookieMutation`
 - `StorageMutation`
-- `JsEvaluation`
-- `UserAction`
+- `RedirectEdge`
 - `ParsedTree`
 - `DynamicCandidate`
 - `DependencyEdge`
@@ -120,6 +153,8 @@ Responsibilities:
 - Filter noise requests.
 - Group requests into likely logical operations.
 - Assign confidence scores to every decision.
+- Run incrementally as each endpoint response completes.
+- Mark fields with no deterministically discoverable source as unresolved, requiring user-override bindings.
 
 AI is not part of the normal path. The analyzer should produce a useful graph with `--no-ai`.
 
@@ -149,24 +184,11 @@ Node types:
 - HTTP request node
 - Response extraction node
 - Cookie/storage update node
-- JavaScript evaluation node
-- Captcha challenge node
-- Browser-assisted fallback node
+- Redirect edge node
 - Logical operation node
+- User-override binding node (unresolved values)
 
 Edges represent data flow. This graph is the intermediate representation used by code generation.
-
-### Challenge And Anti-Bot Adapter Layer
-
-`internal/challenge` handles captcha and anti-bot events.
-
-Responsibilities:
-
-- Detect challenge and captcha pages.
-- Expose provider hooks for captcha solvers.
-- Bind returned captcha tokens into downstream requests.
-- Mark graph regions requiring browser-assisted runtime.
-- Keep provider-specific integrations outside the core analyzer.
 
 ### Code Generator
 
@@ -176,24 +198,25 @@ Rules:
 
 - Generation is deterministic and template-based.
 - AI does not write final executable code.
-- Generated scripts do not depend on `autohttp`, `g4f`, or gRPC workers.
-- Output supports pure HTTP mode first, with browser-assisted fallback only when required.
+- Generated scripts are pure HTTP only. They never drive a browser.
+- Generated scripts do not depend on `autohttp`, gRPC workers, the Python browser worker, or `g4f`.
+- Unresolved dynamic values become explicit user-override stub functions with highly explicit names (for example, `computeHeaderXSignature`).
+- Each redirect hop is preserved as a separate request node. The replay HTTP client must disable automatic `Location` follow.
 
 ### Standalone Runtime
 
-`runtime/go` and `runtime/python` are tiny generated or vendored runtime pieces included with output scripts as needed.
+`runtime/go/` and `runtime/python/` are the runtimes included with generated scripts.
 
 Capabilities:
 
-- HTTP client
+- HTTP client (no auto-redirect by default)
 - Cookie jar
 - Header/body templating
 - Extractors for JSON, HTML, regex, cookies, and storage-like values
-- Optional TLS/client fingerprinting support
-- Optional JavaScript evaluation support
-- Optional captcha-provider hook
+- User-override function hooks
+- Optional TLS/client fingerprinting support (deferred)
 
-The runtime must stay small. If a generated script only needs HTTP and JSON extraction, it should not include browser or AI code.
+The runtimes must stay small. The Go runtime uses Go stdlib plus a small custom TLS client when needed. The Python runtime is a separate package included with generated Python scripts.
 
 ## Visual Architecture
 
@@ -203,76 +226,80 @@ The runtime must stay small. If a generated script only needs HTTP and JSON extr
 flowchart LR
     User[User] --> CLI[Go CLI<br>Orchestrator]
 
-    CLI --> CFMgr[CamoFox<br>Process Mgmt]
-    CFMgr --> CF[camofox-browser<br>Node.js Server]
-    CF --> Cfox[Camoufox<br>Patched Firefox]
+    CLI -->|spawn| Worker[Python Browser<br>Worker subprocess]
+    Worker -->|gRPC bidi<br>stream| CLI
 
-    CF --> Rec[Recorder Layer]
-    Rec --> Sess[RecordedSession<br>Protobuf]
+    Worker --> Camo[Camoufox<br>Adapter]
+    Worker --> Cloak[CloakBrowser<br>Adapter]
+
+    Camo --> Fx[Camoufox<br>Firefox]
+    Cloak --> Chr[CloakBrowser<br>Chromium]
+
+    Fx & Chr --> Events[Browser Events]
+    Events --> Worker
+
+    CLI --> Norm[Normalizer]
+    Norm --> Sess[RecordedSession<br>Protobuf]
 
     Sess --> Tree[Tree Parser]
     Tree --> Idx[Value Index]
     Idx --> Ana[Deterministic<br>Analyzer]
     Ana --> Graph[Executable<br>Dependency Graph]
 
-    Ana -. ambiguity<br>escalation .-> AI[Python gRPC<br>AI Worker]
-    AI -. advisory<br>annotations .-> Ana
+    Ana -. ambiguity .-> AI[Python AI<br>Worker gRPC]
+    AI -. advisory .-> Ana
     AI --> G4F[g4f<br>Providers]
 
     Graph --> Gen[Code Generator]
-    Gen --> GoFile[Standalone<br>Go Script]
-    Gen --> PyFile[Standalone<br>Python Script]
+    Gen --> GoFile[Go Replay<br>Script]
+    Gen --> PyFile[Python Replay<br>Script]
 ```
 
-### AI Escalation Sequence
+### Recording Sequence
 
 ```mermaid
 sequenceDiagram
-    participant Go as Go Analyzer
-    participant Cache as AI Cache
-    participant Py as Python AI
-    participant G4F as g4f Provider
+    participant User
+    participant Go as Go CLI
+    participant Py as Python Worker
+    participant Br as Browser
 
-    Go->>Go: Unresolved region detected
-    Go->>Go: Build ambiguity packet
-    Go->>Cache: Lookup hash
+    User->>Go: record <url> --endpoints A B C
+    Go->>Py: spawn subprocess
+    Go->>Py: StartRecording(browser, url, endpoints)
+    Py->>Br: launch
+    Br-->>Py: launched
+    Py->>Go: BrowserLaunched
 
-    alt Cache hit
-        Cache-->>Go: Cached annotation
-    else Cache miss
-        Go->>Py: gRPC Analyze(packet)
-        Py->>G4F: Prompt
-        G4F-->>Py: Response
-        Py-->>Go: Advisory annotation
-        Go->>Cache: Store result
+    loop Workflow
+        Br->>Br: navigate / interact
+        Br-->>Py: request/response
+        Py->>Py: match endpoint
+        Py->>Go: BrowserEvent
     end
 
-    Go->>Go: Validate + accept/reject
+    Br->>Br: terminal endpoint response
+    Py->>Go: EndpointResponseCompleted
+    Py->>Go: EndpointSettled
+    Go->>Py: CancelRecording
+    Py->>Br: close
+    Py->>Go: SessionFinalized
+    Py-->>Go: exit
 ```
 
-### Generated Runtime Fork
+### Incremental Analysis
 
 ```mermaid
-flowchart TD
-    Graph[Executable Graph] --> Need{Needs<br>Browser?}
-    Need -- No --> Pure[Pure HTTP Mode]
-    Need -- Yes --> Assisted[Browser-Assisted<br>Mode]
+flowchart LR
+    M1[Endpoint<br>A matched] --> Inc1[Incremental<br>analysis A]
+    Inc1 --> Wait[Wait for<br>next endpoint]
 
-    Pure --> Client[HTTP Client<br>+ Cookie Jar]
-    Pure --> Extract[JSON/HTML<br>Extractors]
-    Pure --> Bind[Dynamic<br>Value Binding]
+    M2[Endpoint<br>B matched] --> Inc2[Incremental<br>analysis A+B]
+    Inc2 --> Wait
 
-    Assisted --> Client
-    Assisted --> Extract
-    Assisted --> Bind
-    Assisted --> Hook[Browser<br>Start Hook]
-    Assisted --> Cap[Captcha<br>Provider Hook]
-
-    Client --> Script[Standalone<br>Generated Script]
-    Extract --> Script
-    Bind --> Script
-    Hook --> Script
-    Cap --> Script
+    M3[Endpoint<br>C matched] --> Inc3[Incremental<br>analysis A+B+C]
+    Inc3 --> Term[Terminal<br>settle]
+    Term --> Final[Final full<br>graph]
 ```
 
 ## Project Layout
@@ -284,22 +311,21 @@ autohttp/
       main.go
 
   internal/
-    camofox/
-    record/
-    normalize/
-    tree/
-    index/
-    analyze/
-    graph/
-    challenge/
-    generate/
-    verify/
+    browser/        # Browser selection, adapter registration
+    record/         # Recording orchestration (Python worker lifecycle)
+    normalize/      # BrowserEvent -> RecordedSession
+    tree/           # Typed tree parser
+    index/          # Value index
+    analyze/        # Deterministic analyzer
+    graph/          # Executable graph
+    challenge/      # Challenge/anti-bot detection (metadata only)
+    generate/       # Code generator
+    verify/         # Live verification runner
 
   session/
   gen/
     autohttp/
       v1/
-
   proto/
     autohttp/
       v1/
@@ -308,12 +334,17 @@ autohttp/
         analysis.proto
         graph.proto
         ai.proto
+        browser.proto   # Streaming contract for Python worker
 
   python/
+    autohttp_worker/
+      server.py
+      adapters/
+        camoufox/
+        cloakbrowser/
     autohttp_ai/
       server.py
       providers/
-      prompts/
       gen/
 
   runtime/
@@ -329,7 +360,7 @@ autohttp/
 
   .agents/
     specs/
-    links/
+    links.md
 ```
 
 ### Layout Principles
@@ -337,14 +368,14 @@ autohttp/
 - `internal/` holds Go implementation not meant as public API.
 - `session/` holds stable public session/graph types for library consumers.
 - `proto/` is the source of truth for Go/Python contracts.
-- `python/autohttp_ai` is optional and isolated.
-- `runtime/` contains minimal code copied or embedded into generated scripts.
+- `python/autohttp_worker` is the per-recording browser subprocess. `python/autohttp_ai` is the optional AI escalation subprocess.
+- `runtime/` contains the small standalone runtimes included with generated scripts.
 - `.agents/specs/` holds design and planning docs.
 
 ### Dependency Principles
 
-- Go core should not import Python or Node packages directly.
-- CamoFox is an external process behind REST.
-- Python AI is an external process behind gRPC.
-- Generated scripts should not import from `autohttp`.
+- Go core does not import browser SDKs. All browser control is delegated to the Python worker.
+- The Python browser worker is a separate subprocess. Go does not embed Python.
+- Python AI is a separate subprocess behind gRPC.
+- Generated scripts do not import from `autohttp` and do not drive a browser.
 - `g4f` must stay isolated behind the provider interface.

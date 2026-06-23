@@ -1,6 +1,6 @@
-# autohttp — Deterministic Analysis & AI Escalation
+# autohttp Deterministic Analysis & AI Escalation
 
-Date: 2026-06-21
+Date: 2026-06-23
 
 ## Deterministic Analysis Strategy
 
@@ -10,12 +10,26 @@ This is the core of `autohttp`. The analyzer must do as much as possible without
 
 The analyzer consumes:
 
-- Canonical `RecordedSession`
+- Canonical `RecordedSession` produced by Go's normalizer from browser events
 - Parsed trees
 - Value index
 - Optional repeated recordings
 - Optional user overrides
 - Optional recorder metadata such as initiator and timing
+
+### Live Endpoint Matching
+
+The Python browser worker performs live endpoint matching during recording. The analyzer trusts the resulting endpoint phase events and uses them to drive incremental analysis.
+
+Phase events:
+
+- `EndpointRequestStarted` — emitted on request start.
+- `EndpointResponseCompleted` — emitted on response completion. The ordered milestone advances on this event.
+- `EndpointSettled` — emitted for the terminal endpoint after bounded browser/network settle.
+
+Go runs incremental analysis after each `EndpointResponseCompleted`. The incremental pass operates on all captured evidence up to and including the matched exchange.
+
+After the terminal endpoint settles, the analyzer runs the final full-session pass, which can supersede incremental results if later evidence changed an earlier assumption.
 
 ### Value Matching
 
@@ -54,17 +68,23 @@ These signals do not automatically create dependencies. They mark fields as dyna
 
 ### Sequence Reasoning
 
-The analyzer should respect order.
+The analyzer respects order.
 
 A downstream field can depend only on:
 
 - Earlier responses
 - Earlier cookies/storage mutations
 - Earlier redirects
-- Earlier JavaScript/browser observations
+- Earlier browser observations
 - Stable user-provided inputs
 
 This prevents impossible AI-style guesses.
+
+### Redirect Handling
+
+Each redirect hop is recorded as a separate `HttpExchange` with an explicit `RedirectEdge` relationship. The analyzer does not collapse redirects into a single node because intermediate responses often carry `Set-Cookie`, auth codes, CSRF refreshes, or other required evidence.
+
+The generated replay also preserves each hop and disables automatic `Location` follow.
 
 ### Noise Filtering
 
@@ -96,6 +116,18 @@ The analyzer compares tree paths across runs:
 
 This is cheaper and more reliable than LLM analysis.
 
+### Unresolved Bindings
+
+If a field has no deterministically discoverable source, the analyzer marks it as unresolved and the generator emits a user-override stub function with a highly explicit name (e.g., `computeHeaderXSignature`).
+
+The unresolved binding includes:
+
+- The exact target field path
+- The observed value at recording time
+- The reason it is unresolved (high entropy with no source, no upstream, etc.)
+
+The user is responsible for implementing the stub. Generated scripts fail loudly with a clear error if a stub is left unimplemented.
+
 ### Confidence Scoring
 
 Every candidate gets a confidence score and reason code.
@@ -109,6 +141,7 @@ Every candidate gets a confidence score and reason code.
 | High-entropy field with token-like name | 0.70 |
 | Name-only CSRF guess | 0.45 |
 | AI suggestion without deterministic match | max 0.50 |
+| Field with no source | unresolved (no confidence, requires user override) |
 
 ### AI Escalation Criteria
 
@@ -129,7 +162,7 @@ The analyzer emits:
 
 - Accepted candidates
 - Rejected candidates
-- Unresolved candidates
+- Unresolved candidates (with user-override binding metadata)
 - Confidence scores
 - Evidence paths
 - Required user decisions
@@ -143,7 +176,7 @@ The AI layer exists only to resolve ambiguity that deterministic analysis cannot
 
 ### Default Mode
 
-By default, `autohttp analyze` should run mostly deterministic.
+By default, `autohttp analyze` runs mostly deterministic.
 
 Recommended defaults:
 
