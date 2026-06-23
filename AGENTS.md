@@ -35,8 +35,6 @@ Key packages:
 - `internal/verify` — Live verification runner
 - `internal/inspect` — CLI inspection
 - `session` — Public session types
-- `runtime/go` — Go runtime for generated scripts
-- `runtime/python` — Python runtime for generated scripts
 - `proto/autohttp/v1/` — Protobuf contracts (includes `browser.proto` for the streaming worker contract)
 - `python/autohttp_worker/` — Per-recording browser worker (Camoufox and CloakBrowser adapters)
 - `python/autohttp_ai/` — Optional Python AI worker (g4f by default)
@@ -45,7 +43,7 @@ Key packages:
 
 ```bash
 # Go version
-go version go1.22+
+go version go1.26+
 
 # Python version
 python3 --version    # 3.11+
@@ -57,11 +55,20 @@ go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
 # Generate protobufs (Go and Python)
 make proto
 
-# Install Python workers
-pip install -e python/autohttp_worker
-pip install -e python/autohttp_ai
+# Python workers — use a venv. The pyproject.toml files do not
+# declare a build-system yet, so `pip install -e` does not work.
+# Run the workers via PYTHONPATH against the source tree:
+python3 -m venv .venv
+source .venv/bin/activate
+pip install grpcio grpcio-tools protobuf pytest
 
-# Browser Python deps
+# When the Go CLI spawns the worker it sets PYTHONPATH
+# automatically, so a system-wide install is not required.
+# For running the worker by hand during development:
+PYTHONPATH=python:python/autohttp_worker/gen \
+  python3 -m autohttp_worker
+
+# Browser Python deps (only needed once live browser launch lands)
 pip install camoufox cloakbrowser
 
 # Build
@@ -80,13 +87,17 @@ go test -race ./...
 
 # Python worker tests
 pytest python/autohttp_worker/tests
-pytest python/autohttp_ai/tests
 
 # Specific Go package
 go test ./internal/analyze/... -v
 
-# Run generated script against test target
-./bin/autohttp verify --script testdata/generated/login.go --target go --success-url "https://example.com/dashboard"
+# Static type check (basedpyright, also accepts pyright config)
+basedpyright python
+# or
+pyright python
+
+# Go vet
+go vet ./...
 ```
 
 ## Coding Conventions
@@ -95,7 +106,7 @@ go test ./internal/analyze/... -v
 - Python: `ruff` for linting and formatting, `mypy --strict` for types, `pytest` for tests
 - Protobuf: contract-first, Go and Python share `.proto` files
 - Tests: table-driven, prefer golden fixtures in `testdata/fixtures/`
-- Generated scripts: pure HTTP only, no external deps beyond stdlib + `runtime/go` or `runtime/python`
+- Generated scripts: pure HTTP only, no external deps beyond stdlib + a small bundled runtime
 - Internal packages: not imported by generated scripts
 - Generated scripts never drive a browser
 - Unresolved dynamic values become user-override stub functions with explicit names (e.g. `computeHeaderXSignature`)
@@ -109,23 +120,26 @@ go test ./internal/analyze/... -v
 
 ```
 autohttp/
-  cmd/autohttp/              # CLI
+  cmd/autohttp/              # CLI (record, analyze, generate, verify, inspect)
   internal/                  # Private Go implementation
+    record/                  # Python worker subprocess + gRPC client
+    tree/  index/  analyze/  graph/  generate/  verify/  inspect/
+    normalize/  challenge/  importer/
   session/                   # Public session types
-  gen/autohttp/v1/           # Generated protobuf Go bindings
+  gen/autohttp/v1/           # Generated protobuf Go bindings (committed)
   proto/autohttp/v1/         # Protobuf contracts (session, tree, analysis, graph, ai, browser)
   python/
     autohttp_worker/         # Per-recording browser worker
+      __init__.py  __main__.py  server.py  endpoint.py  pyproject.toml
       adapters/
-        camoufox/
-        cloakbrowser/
-    autohttp_ai/             # Optional Python AI worker
-  runtime/
-    go/                      # Go runtime for generated scripts
-    python/                  # Python runtime for generated scripts
+        __init__.py  base.py  camoufox.py  cloakbrowser.py
+      gen/                    # Generated protobuf Python bindings (gitignored)
+      tests/
+    autohttp_ai/             # Optional Python AI worker (stub)
   testdata/
-    fixtures/                # Golden fixtures
-    targets/                 # Local test targets
+    fixtures/                # Golden fixtures (empty placeholders)
+    targets/                 # Local test targets (empty placeholders)
+  pyrightconfig.json         # basedpyright / pyright config
   .agents/
     specs/                   # Design specs
     plans/                   # Implementation plans
@@ -141,6 +155,7 @@ autohttp/
 | `go test ./...` | Run all Go tests |
 | `go test -race ./...` | Go tests with race detector |
 | `pytest python/` | Run all Python tests |
+| `basedpyright python` | Static type check the Python packages |
 | `./bin/autohttp record <url>` | Start a recording (spawns Python worker) |
 | `./bin/autohttp analyze` | Run deterministic analysis on a session |
 | `./bin/autohttp generate --target go\|python` | Generate a replay script |
@@ -168,7 +183,7 @@ autohttp/
 ### Adding a test fixture
 1. Add JSON to `testdata/fixtures/<name>.json`
 2. Add golden expectations in `testdata/fixtures/<name>.golden.json`
-3. Test loader in `internal/record/fixture_test.go`
+3. Loader lives in `internal/importer`
 
 ## Dependencies
 
@@ -177,14 +192,17 @@ autohttp/
 - CloakBrowser: Python browser automation (`cloakbrowser` pip package, Chromium-based)
 - Python AI: isolated behind gRPC, optional
 - `g4f`: only in Python AI worker, not in generated scripts
+- Type checking: `basedpyright` (or `pyright`)
 
 ## PR Checklist
 
 - [ ] `go fmt ./...` passes
 - [ ] `go test ./...` passes
 - [ ] `go test -race ./...` passes
+- [ ] `go vet ./...` passes
 - [ ] `make proto` works
-- [ ] `pytest python/` passes
+- [ ] `pytest python/autohttp_worker/tests` passes
+- [ ] `basedpyright python` is clean
 - [ ] Generated Go and Python code compiles
 - [ ] No AI deps in generated runtime
 - [ ] Generated scripts are pure HTTP only
@@ -196,6 +214,6 @@ autohttp/
 AI assistants should consult these files for design context and external references:
 
 - `.agents/specs/` — Design specifications. `design.md` is the entrypoint with links to all sub-specs (architecture, data-flow, analysis, contracts, runtime, cli, testing, trust).
-- `.agents/links.md` — External references (Camoufox, CloakBrowser, g4f, protobuf, gRPC, Playwright, project conventions).
+- `.agents/links.md` — External references (Camoufox, CloakBrowser, g4f, protobuf, gRPC, project conventions).
 - `.agents/plans/` — Implementation plans for each milestone.
 - `AGENTS.md` (this file) — Project overview, conventions, and commands.
