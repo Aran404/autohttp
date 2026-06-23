@@ -1,4 +1,4 @@
-package gort
+package http
 
 import (
 	"testing"
@@ -20,7 +20,7 @@ func TestExtractJSON(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.path, func(t *testing.T) {
-			got, err := ExtractJSON(body, tt.path)
+			got, err := ExtractJSONPath(body, tt.path)
 			if tt.wantFail {
 				if err == nil {
 					t.Errorf("ExtractJSON(%q) = %q, nil; want error", tt.path, got)
